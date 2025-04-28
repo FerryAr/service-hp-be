@@ -1,0 +1,7 @@
+node_modules
+# Keep environment variables out of version control
+.env
+assets/media-hp/arrival/*
+assets/media-hp/before/*
+assets/media-hp/after/*
+assets/media-hp/bongkar/*

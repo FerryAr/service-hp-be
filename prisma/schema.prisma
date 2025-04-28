@@ -1,0 +1,135 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         Int             @id @default(autoincrement())
+  username      String          @unique
+  password   String
+  role       Role            @default(CS)
+  refreshToken String? @db.Text
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  OrderCs Order[] @relation("OrderCs")
+  OrderKT Order[] @relation("OrderKepalaTeknisi")
+  OrderTeknisi Order[] @relation("OrderTeknisi")
+
+  OrderTimeline OrderTimeline[]
+
+  ExtensionRequestRequester ExtensionRequest[] @relation("ExtensionRequestUser")
+  ExtensionRequestApprover ExtensionRequest[] @relation("ExtensionRequestApprover")
+}
+
+enum Role {
+  CS
+  KEPALA_TEKNISI
+  TEKNISI
+}
+
+model Order {
+  id                  Int      @id @default(autoincrement())
+  no_order            String   @unique
+  nama_pelanggan      String
+  alamat_pelanggan    String
+  no_hp_pelanggan     String
+  keterangan          String
+  cs_id             Int
+  kepala_teknisi_id   Int?     // Nullable foreign key
+  teknisi_id          Int?     // Nullable foreign key
+  cs_transfer_deadline DateTime? // Nullable timestamp
+  bongkar_deadline     DateTime? // Nullable timestamp
+  perbaikan_deadline   DateTime? // Nullable timestamp
+  qc_kepala_deadline   DateTime? // Nullable timestamp
+  qc_cs_deadline       DateTime? // Nullable timestamp
+  status              Status   @default(draft)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  cs                User     @relation("OrderCs", fields: [cs_id], references: [id])
+  kepala_teknisi      User?    @relation("OrderKepalaTeknisi", fields: [kepala_teknisi_id], references: [id])
+  teknisi            User?    @relation("OrderTeknisi", fields: [teknisi_id], references: [id])
+
+  OrderMedia OrderMedia[]
+
+  OrderTimeline OrderTimeline[]
+
+  ExtensionRequest ExtensionRequest[]
+}
+
+enum Status {
+  draft
+  waiting_bongkar
+  waiting_teknisi
+  in_progress
+  need_extension
+  waiting_qc_kepala
+  waiting_qc_cs
+  completed
+  overdue
+}
+
+model OrderMedia {
+  id        Int      @id @default(autoincrement())
+  order_id  Int
+  type      MediaType
+  path      String
+  file_size Float? // Nullable file size
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order     Order   @relation(fields: [order_id], references: [id], onDelete: Cascade)
+}
+
+enum MediaType {
+  arrival
+  bongkar
+  before
+  after
+  video
+  qc
+}
+
+
+model OrderTimeline {
+  id         Int      @id @default(autoincrement())
+  order_id   Int
+  action     String
+  user_id    Int
+  start_time DateTime
+  end_time   DateTime?
+  is_overdue Boolean  @default(false)
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  order      Order    @relation(fields: [order_id], references: [id])
+  user       User     @relation(fields: [user_id], references: [id])
+}
+
+model ExtensionRequest {
+  id          Int      @id @default(autoincrement())
+  order_id    Int
+  user_id     Int // Teknisi yang meminta
+  extra_days  Int
+  reason      String
+  approved    Boolean  @default(false)
+  approved_by Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  order       Order    @relation(fields: [order_id], references: [id])
+  user        User     @relation("ExtensionRequestUser", fields: [user_id], references: [id])
+  approver    User?    @relation("ExtensionRequestApprover", fields: [approved_by], references: [id])
+}
