@@ -20,5 +20,25 @@ export class CreateOrderDto {
     @ApiProperty()
     @IsNotEmpty()
     @IsString()
+    merk_hp: string;
+
+    @ApiProperty()
+    @IsNotEmpty()
+    @IsString()
+    seri_hp: string;
+
+    @ApiProperty()
+    @IsNotEmpty()
+    @IsString()
+    model_hp: string;
+
+    @ApiProperty()
+    @IsNotEmpty()
+    @IsString()
+    imei_hp: string;
+
+    @ApiProperty()
+    @IsNotEmpty()
+    @IsString()
     keterangan: string;
 }

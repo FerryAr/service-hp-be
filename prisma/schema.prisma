@@ -44,6 +44,10 @@ model Order {
   nama_pelanggan      String
   alamat_pelanggan    String
   no_hp_pelanggan     String
+  merkHp            String
+  seriHp            String
+  modelHp           String
+  imeiHp            String
   keterangan          String
   cs_id             Int
   kepala_teknisi_id   Int?     // Nullable foreign key
@@ -93,6 +97,7 @@ model OrderMedia {
 }
 
 enum MediaType {
+  csShot
   arrival
   bongkar
   before

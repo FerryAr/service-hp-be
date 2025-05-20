@@ -28,6 +28,10 @@ export class OrdersService {
                 nama_pelanggan: true,
                 alamat_pelanggan: true,
                 no_hp_pelanggan: true,
+                merkHp: true,
+                seriHp: true,
+                modelHp: true,
+                imeiHp: true,
                 keterangan: true,
                 cs_transfer_deadline: true,
                 bongkar_deadline: true,
@@ -85,6 +89,57 @@ export class OrdersService {
         return ordersRes;
     }
 
+    async orderByNoOrder(
+        no_order: string
+    ): Promise<any | null> {
+        const order = await this.prismaService.order.findUnique({
+             select: {
+                id: true,
+                no_order: true,
+                nama_pelanggan: true,
+                alamat_pelanggan: true,
+                no_hp_pelanggan: true,
+                merkHp: true,
+                seriHp: true,
+                modelHp: true,
+                imeiHp: true,
+                keterangan: true,
+                cs_transfer_deadline: true,
+                bongkar_deadline: true,
+                perbaikan_deadline: true,
+                qc_kepala_deadline: true,
+                qc_cs_deadline: true,
+                status: true,
+                createdAt: true,
+                updatedAt: true,
+               OrderTimeline: true
+            },
+            where: {
+                no_order: no_order,
+            },
+        });
+
+        const orderMediaList = await this.orderMedia({
+            order_id: order!.id,
+        });
+
+        // Group order media by order_id and type
+        const categorizedOrderMedia = orderMediaList.reduce((acc, media) => {
+            if (!acc[media.type]) {
+                acc[media.type] = [];
+            }
+            acc[media.type].push(media);
+            return acc;
+        }, {} as Record<string, typeof orderMediaList>);
+
+        const orderRes = {
+            ...order,
+            fotoHp: categorizedOrderMedia,
+        };
+
+        return orderRes;
+    }
+
     async orderMedia(orderMediaWhereInput: Prisma.OrderMediaWhereInput): Promise<OrderMedia[]> {
         const orderMedia = await this.prismaService.orderMedia.findMany({
             where: orderMediaWhereInput
@@ -93,7 +148,7 @@ export class OrdersService {
         return orderMedia;
     }
 
-    async createOrder(data: CreateOrderDto, req: any, res: any, fotoHp: Express.Multer.File[]): Promise<boolean> {
+    async createOrder(data: CreateOrderDto, req: any, res: any, fotoHp: Express.Multer.File[], csShot: Express.Multer.File): Promise<boolean> {
         const userId = req.user.userId;
         const user = await this.usersService.user({ id: userId });
 
@@ -115,14 +170,15 @@ export class OrdersService {
                     nama_pelanggan: data.nama_pelanggan,
                     alamat_pelanggan: data.alamat_pelanggan,
                     no_hp_pelanggan: data.no_hp_pelanggan,
+                    merkHp: data.merk_hp,
+                    seriHp: data.seri_hp,
+                    modelHp: data.model_hp,
+                    imeiHp: data.imei_hp,
                     keterangan: data.keterangan,
                     cs_id: user!.id,
                     cs_transfer_deadline: cs_transfer_deadline,
                 },
             });
-
-            console.log(fotoHp);
-
 
             for (let i = 0; i < fotoHp.length; i++) {
                 let ext = fileMimeType[fotoHp[i].mimetype];
@@ -145,6 +201,24 @@ export class OrdersService {
                     }
                 });
             }
+
+            let extCs = fileMimeType[csShot.mimetype];
+            const bufferCs = csShot.buffer;
+            const fileNameCs = `./assets/media-hp/cs-shot/${order.no_order}.${extCs}`;
+            writeFile(fileNameCs, bufferCs, (err) => {
+                if (err) {
+                    this.logger.error(err);
+                }
+            });
+            const relativePathCs = fileNameCs.replace(/^\.\/+/, '');
+            await this.prismaService.orderMedia.create({
+                data: {
+                    order_id: order.id,
+                    type: 'csShot',
+                    path: relativePathCs,
+                    file_size: csShot.size,
+                }
+            });
 
             await this.prismaService.orderTimeline.create({
                 data: {
@@ -171,6 +245,7 @@ export class OrdersService {
 
             return true;
         } catch (error) {
+            console.log(error);
             return false;
         }
     }
